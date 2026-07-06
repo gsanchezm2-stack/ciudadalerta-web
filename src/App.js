@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 
-const API = 'http://192.168.1.92:5000';
+const API = 'https://handler-keep-ecology.ngrok-free.dev';
 
 export default function App() {
   const [alertas, setAlertas] = useState([]);
@@ -39,19 +39,19 @@ export default function App() {
       
       if (!response.ok) throw new Error('Error al enviar');
       
-      alert('✅ Alerta registrada correctamente');
+      alert('Alerta registrada correctamente');
       setTipo('');
       setDescripcion('');
       setSector('');
       setVista('alertas');
       obtenerAlertas();
     } catch (error) {
-      alert('❌ No se pudo enviar la alerta');
+      alert('No se pudo enviar la alerta');
     }
   };
 
   const eliminarAlerta = async (id) => {
-    if (window.confirm('¿Deseas eliminar esta alerta?')) {
+    if (window.confirm('Deseas eliminar esta alerta?')) {
       try {
         await fetch(`${API}/alertas/${id}`, { method: 'DELETE' });
         obtenerAlertas();
@@ -64,7 +64,7 @@ export default function App() {
   return (
     <div className="container">
       <div className="header">
-        <h1 className="headerTitle">🚨 CiudadAlerta</h1>
+        <h1 className="headerTitle">CiudadAlerta</h1>
         <p className="headerSubtitle">Plataforma de alertas ciudadanas</p>
       </div>
 
@@ -72,18 +72,18 @@ export default function App() {
         <button 
           className={`navBtn ${vista === 'alertas' ? 'navBtnActive' : ''}`}
           onClick={() => setVista('alertas')}>
-          📋 Ver Alertas
+          Ver Alertas
         </button>
         <button 
           className={`navBtn ${vista === 'nueva' ? 'navBtnActive' : ''}`}
           onClick={() => setVista('nueva')}>
-          ✏️ Nueva Alerta
+          Nueva Alerta
         </button>
       </div>
 
       {vista === 'nueva' && (
         <div className="form">
-          <h3 className="formTitle">📝 Registrar nueva alerta</h3>
+          <h3 className="formTitle">Registrar nueva alerta</h3>
           <input 
             className="input" 
             placeholder="Tipo (Ej: Seguridad, Infraestructura...)"
@@ -96,12 +96,12 @@ export default function App() {
             onChange={(e) => setSector(e.target.value)} />
           <textarea 
             className="input textarea" 
-            placeholder="Descripción detallada de la alerta"
+            placeholder="Descripcion detallada de la alerta"
             value={descripcion} 
             onChange={(e) => setDescripcion(e.target.value)} 
             rows="4" />
           <button className="btnEnviar" onClick={enviarAlerta}>
-            📤 Enviar Alerta
+            Enviar Alerta
           </button>
         </div>
       )}
@@ -109,18 +109,18 @@ export default function App() {
       {vista === 'alertas' && (
         <div className="lista">
           {alertas.length === 0 ? (
-            <p className="empty">📭 No hay alertas registradas</p>
+            <p className="empty">No hay alertas registradas</p>
           ) : (
             alertas.map((item) => (
               <div key={item._id} className="card">
                 <div className="cardHeader">
-                  <span className="cardTipo">🔹 {item.tipo}</span>
+                  <span className="cardTipo">{item.tipo}</span>
                   <button className="btnEliminar" onClick={() => eliminarAlerta(item._id)}>
-                    🗑️ Eliminar
+                    Eliminar
                   </button>
                 </div>
                 <p className="cardDesc">{item.descripcion}</p>
-                <p className="cardSector">📍 {item.sector}</p>
+                <p className="cardSector">{item.sector}</p>
               </div>
             ))
           )}
