@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 
-const API = 'https://handler-keep-ecology.ngrok-free.dev';
+const API = 'http://localhost:5000/api';
 
 export default function App() {
   const [alertas, setAlertas] = useState([]);
