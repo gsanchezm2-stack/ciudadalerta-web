@@ -1,17 +1,36 @@
-import { useState } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { crearAlerta } from '../api';
 import { TIPOS_ALERTA } from '../utils';
 
 export default function AlertaNew() {
   const navigate = useNavigate();
+  const fileInputRef = useRef(null);
   const [tipo, setTipo] = useState('');
   const [sector, setSector] = useState('');
   const [descripcion, setDescripcion] = useState('');
+  const [archivos, setArchivos] = useState([]);
+  const [previews, setPreviews] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [exito, setExito] = useState(false);
 
-  const handleSubmit = async (e) => {
+  const handleFiles = useCallback((e) => {
+    const nuevos = Array.from(e.target.files).slice(0, 3 - archivos.length);
+    setArchivos(prev => [...prev, ...nuevos]);
+    nuevos.forEach(f => {
+      const reader = new FileReader();
+      reader.onloadend = () => setPreviews(prev => [...prev, reader.result]);
+      reader.readAsDataURL(f);
+    });
+  }, [archivos.length]);
+
+  const removeFile = useCallback((idx) => {
+    setArchivos(prev => prev.filter((_, i) => i !== idx));
+    setPreviews(prev => prev.filter((_, i) => i !== idx));
+  }, []);
+
+  const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
     setError('');
 
@@ -26,14 +45,28 @@ export default function AlertaNew() {
 
     setLoading(true);
     try {
-      await crearAlerta({ tipo, descripcion, sector });
-      navigate('/alertas', { replace: true });
+      await crearAlerta({ tipo, descripcion, sector, adjuntos: archivos });
+      setExito(true);
+      setTimeout(() => navigate('/alertas', { replace: true }), 2000);
     } catch (err) {
       setError(err.message || 'No se pudo enviar la alerta');
     } finally {
       setLoading(false);
     }
-  };
+  }, [tipo, descripcion, sector, archivos, navigate]);
+
+  if (exito) {
+    return (
+      <div className="success-overlay">
+        <div className="success-modal">
+          <div className="success-icon">&#10003;</div>
+          <h3 className="success-title">Reporte Enviado</h3>
+          <p className="success-text">Tu alerta ha sido registrada exitosamente.</p>
+          <div className="success-spinner"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -64,6 +97,28 @@ export default function AlertaNew() {
           <textarea className="input textarea" placeholder="Describe el problema con detalle (min. 10 caracteres)"
             value={descripcion} onChange={(e) => setDescripcion(e.target.value)} rows="5" required />
           <span className="form-hint">{descripcion.length}/500 caracteres</span>
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Fotos (max. 3)</label>
+          <div className="upload-area" onClick={() => fileInputRef.current?.click()}>
+            <input ref={fileInputRef} type="file" accept="image/*" multiple
+              onChange={handleFiles} style={{ display: 'none' }} />
+            {archivos.length === 0 ? (
+              <p className="upload-placeholder">Click para adjuntar imagenes</p>
+            ) : (
+              <div className="upload-previews">
+                {previews.map((p, i) => (
+                  <div key={i} className="upload-preview">
+                    <img src={p} alt={`Adjunto ${i + 1}`} />
+                    <button type="button" className="upload-remove" onClick={(e) => { e.stopPropagation(); removeFile(i); }}>&times;</button>
+                  </div>
+                ))}
+                {archivos.length < 3 && <div className="upload-add" onClick={() => fileInputRef.current?.click()}>+</div>}
+              </div>
+            )}
+          </div>
+          <span className="form-hint">{archivos.length}/3 archivos seleccionados</span>
         </div>
 
         <button className="btn btn-primary btn-block" type="submit" disabled={loading}>

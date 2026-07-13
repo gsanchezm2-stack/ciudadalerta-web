@@ -1,9 +1,14 @@
-const API = '/api';
+const API = process.env.REACT_APP_API_URL
+  ? `${process.env.REACT_APP_API_URL}/api`
+  : '/api';
 
 async function request(endpoint, options = {}) {
   const token = localStorage.getItem('ciudadalerta_token');
-  const headers = { 'Content-Type': 'application/json', ...options.headers };
+  const headers = { ...options.headers };
   if (token) headers.Authorization = `Bearer ${token}`;
+  if (!(options.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
 
   const res = await fetch(`${API}${endpoint}`, { ...options, headers });
 
@@ -29,6 +34,20 @@ export function registrarUsuario(nombre, email, password) {
   });
 }
 
+export function forgotPassword(email) {
+  return request('/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email })
+  });
+}
+
+export function resetPassword(token, password) {
+  return request('/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ token, password })
+  });
+}
+
 export function getAlertas(params = {}) {
   const qs = new URLSearchParams();
   if (params.sector) qs.set('sector', params.sector);
@@ -37,6 +56,11 @@ export function getAlertas(params = {}) {
   if (params.q) qs.set('q', params.q);
   if (params.page) qs.set('page', params.page);
   if (params.limit) qs.set('limit', params.limit);
+  if (params.fechaDesde) qs.set('fechaDesde', params.fechaDesde);
+  if (params.fechaHasta) qs.set('fechaHasta', params.fechaHasta);
+  if (params.lat) qs.set('lat', params.lat);
+  if (params.lng) qs.set('lng', params.lng);
+  if (params.radio) qs.set('radio', params.radio);
   const query = qs.toString();
   return request(`/alertas${query ? '?' + query : ''}`);
 }
@@ -46,6 +70,16 @@ export function getAlerta(id) {
 }
 
 export function crearAlerta(data) {
+  if (data.adjuntos && data.adjuntos.length > 0) {
+    const formData = new FormData();
+    formData.append('tipo', data.tipo);
+    formData.append('descripcion', data.descripcion);
+    formData.append('sector', data.sector);
+    if (data.lat) formData.append('lat', data.lat);
+    if (data.lng) formData.append('lng', data.lng);
+    data.adjuntos.forEach(f => formData.append('adjuntos', f));
+    return request('/alertas', { method: 'POST', body: formData });
+  }
   return request('/alertas', {
     method: 'POST',
     body: JSON.stringify(data)
@@ -83,5 +117,30 @@ export function cambiarRolUsuario(id, rol) {
   return request(`/usuarios/${id}/rol`, {
     method: 'PATCH',
     body: JSON.stringify({ rol })
+  });
+}
+
+export function getComentarios(alertaId) {
+  return request(`/alertas/${alertaId}/comentarios`);
+}
+
+export function crearComentario(alertaId, texto) {
+  return request(`/alertas/${alertaId}/comentarios`, {
+    method: 'POST',
+    body: JSON.stringify({ texto })
+  });
+}
+
+export function eliminarComentario(id) {
+  return request(`/comentarios/${id}`, { method: 'DELETE' });
+}
+
+export function exportarCSV() {
+  const token = localStorage.getItem('ciudadalerta_token');
+  return fetch(`${API}/alertas/export`, {
+    headers: { Authorization: `Bearer ${token}` }
+  }).then(res => {
+    if (!res.ok) throw new Error('Error al exportar');
+    return res.blob();
   });
 }

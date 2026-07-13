@@ -1,15 +1,17 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import './App.css';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { loginUser, registrarUsuario } from './api';
-import AppLayout from './components/AppLayout';
-import Dashboard from './components/Dashboard';
-import AlertasList from './components/AlertasList';
-import AlertaDetail from './components/AlertaDetail';
-import AlertaNew from './components/AlertaNew';
-import Perfil from './components/Perfil';
-import AdminPanel from './components/AdminPanel';
+import { loginUser, registrarUsuario, forgotPassword, resetPassword } from './api';
+
+const AppLayout = lazy(() => import('./components/AppLayout'));
+const Dashboard = lazy(() => import('./components/Dashboard'));
+const AlertasList = lazy(() => import('./components/AlertasList'));
+const AlertaDetail = lazy(() => import('./components/AlertaDetail'));
+const AlertaNew = lazy(() => import('./components/AlertaNew'));
+const Perfil = lazy(() => import('./components/Perfil'));
+const AdminPanel = lazy(() => import('./components/AdminPanel'));
+const MapaAlertas = lazy(() => import('./components/MapaAlertas'));
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
@@ -30,6 +32,12 @@ function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetToken, setResetToken] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [resetStep, setResetStep] = useState(0);
+  const [resetMsg, setResetMsg] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -45,6 +53,84 @@ function LoginPage() {
       setLoading(false);
     }
   };
+
+  const handleForgot = async (e) => {
+    e.preventDefault();
+    setResetMsg('');
+    setLoading(true);
+    try {
+      const data = await forgotPassword(resetEmail);
+      setResetToken(data.resetToken);
+      setResetMsg('Token de recuperacion recibido');
+      setResetStep(1);
+    } catch (err) {
+      setResetMsg(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReset = async (e) => {
+    e.preventDefault();
+    setResetMsg('');
+    setLoading(true);
+    try {
+      await resetPassword(resetToken, newPassword);
+      setResetMsg('Contrasena actualizada. Ya puedes iniciar sesion.');
+      setResetStep(2);
+    } catch (err) {
+      setResetMsg(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (showForgot) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="bg-primary-700 text-white px-6 py-5">
+          <h1 className="text-2xl font-bold">CiudadAlerta</h1>
+          <p className="text-primary-200 text-sm mt-1">Recuperar contrasena</p>
+        </div>
+        <div className="auth-container">
+          <div className="auth-box">
+            <h2 className="auth-title">Recuperar Contrasena</h2>
+            {resetMsg && <p className={resetStep === 2 ? 'auth-success' : 'auth-error'}>{resetMsg}</p>}
+
+            {resetStep === 0 && (
+              <form onSubmit={handleForgot}>
+                <input className="input" type="email" placeholder="Tu email" value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)} required autoFocus />
+                <button className="btn btn-primary btn-block" type="submit" disabled={loading}>
+                  {loading ? 'Enviando...' : 'Enviar enlace'}
+                </button>
+              </form>
+            )}
+
+            {resetStep === 1 && (
+              <form onSubmit={handleReset}>
+                <input className="input" type="password" placeholder="Nueva contrasena (min. 8)" value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)} required minLength={8} autoFocus />
+                <button className="btn btn-primary btn-block" type="submit" disabled={loading}>
+                  {loading ? 'Actualizando...' : 'Cambiar contrasena'}
+                </button>
+              </form>
+            )}
+
+            {resetStep === 2 && (
+              <button className="btn btn-primary btn-block" onClick={() => { setShowForgot(false); setResetStep(0); }}>
+                Volver al login
+              </button>
+            )}
+
+            <p className="auth-toggle">
+              <a href="/login" className="auth-link" onClick={(e) => { e.preventDefault(); setShowForgot(false); setResetStep(0); }}>Volver al login</a>
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -65,6 +151,9 @@ function LoginPage() {
               {loading ? 'Entrando...' : 'Entrar'}
             </button>
           </form>
+          <p className="auth-toggle">
+            <a href="/forgot" className="auth-link" onClick={(e) => { e.preventDefault(); setShowForgot(true); }}>Olvidaste tu contrasena?</a>
+          </p>
           <p className="auth-toggle">
             No tienes cuenta?{' '}
             <a href="/registro" className="auth-link" onClick={(e) => { e.preventDefault(); navigate('/registro'); }}>Registrate</a>
@@ -133,21 +222,24 @@ export default function AppWrapper() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
-          <Route path="/registro" element={<PublicRoute><RegisterPage /></PublicRoute>} />
-          <Route path="/" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-            <Route index element={<Navigate to="/tablero" replace />} />
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="tablero" element={<Dashboard />} />
-            <Route path="alertas" element={<AlertasList />} />
-            <Route path="alertas/nueva" element={<AlertaNew />} />
-            <Route path="alertas/:id" element={<AlertaDetail />} />
-            <Route path="perfil" element={<Perfil />} />
-            <Route path="admin" element={<AdminPanel />} />
-          </Route>
-          <Route path="*" element={<Navigate to="/login" replace />} />
-        </Routes>
+        <Suspense fallback={<div className="empty">Cargando...</div>}>
+          <Routes>
+            <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+            <Route path="/registro" element={<PublicRoute><RegisterPage /></PublicRoute>} />
+            <Route path="/" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+              <Route index element={<Navigate to="/tablero" replace />} />
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="tablero" element={<Dashboard />} />
+              <Route path="alertas" element={<AlertasList />} />
+              <Route path="alertas/nueva" element={<AlertaNew />} />
+              <Route path="alertas/:id" element={<AlertaDetail />} />
+              <Route path="mapa" element={<MapaAlertas />} />
+              <Route path="perfil" element={<Perfil />} />
+              <Route path="admin" element={<AdminPanel />} />
+            </Route>
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </Routes>
+        </Suspense>
       </BrowserRouter>
     </AuthProvider>
   );

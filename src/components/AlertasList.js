@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { getAlertas } from '../api';
 import { useAuth } from '../context/AuthContext';
@@ -16,9 +16,9 @@ export default function AlertasList() {
   const [pagina, setPagina] = useState(1);
   const [paginacion, setPaginacion] = useState({ total: 0, paginas: 1 });
 
-  const puedeEliminar = tienePermiso(user.rol, 'alertas:eliminar');
+  const puedeEliminar = useMemo(() => tienePermiso(user.rol, 'alertas:eliminar'), [user.rol]);
 
-  const cargar = async (page = 1) => {
+  const cargar = useCallback(async (page = 1) => {
     setLoading(true);
     try {
       const params = { page, limit: 10 };
@@ -35,17 +35,15 @@ export default function AlertasList() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filtroSector, filtroTipo, filtroEstado, busqueda]);
 
-  useEffect(() => { cargar(); }, []);
+  useEffect(() => { cargar(); }, [cargar]);
 
-  const handleFiltrar = () => {
-    cargar(1);
-  };
+  const handleFiltrar = useCallback(() => { cargar(1); }, [cargar]);
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter') handleFiltrar();
-  };
+  const handleKeyDown = useCallback((e) => {
+    if (e.key === 'Enter') cargar(1);
+  }, [cargar]);
 
   return (
     <div>
@@ -78,24 +76,7 @@ export default function AlertasList() {
         <>
           <div className="alertas-grid">
             {alertas.map((item) => (
-              <div key={item._id} className={`alerta-card border-${item.estado || 'pendiente'}`}>
-                <div className="alerta-card-header">
-                  <span className={`badge badge-${item.estado}`}>{item.estado?.replace('_', ' ') || 'pendiente'}</span>
-                  <span className="alerta-fecha">{formatFecha(item.fecha)}</span>
-                </div>
-                <div className="alerta-card-body">
-                  <span className={`tipo-badge tipo-${item.tipo?.toLowerCase()}`}>{item.tipo}</span>
-                  <h3 className="alerta-card-desc">{item.descripcion}</h3>
-                  <p className="alerta-card-sector">{item.sector}</p>
-                  <p className="alerta-card-autor">Reportado por: {item.autor?.nombre || 'Anonimo'}</p>
-                </div>
-                <div className="alerta-card-footer">
-                  <Link to={`/alertas/${item._id}`} className="btn btn-sm btn-primary">Ver mas</Link>
-                  {puedeEliminar && (
-                    <EliminarBtn id={item._id} onDeleted={() => cargar(pagina)} />
-                  )}
-                </div>
-              </div>
+              <AlertaCard key={item._id} item={item} puedeEliminar={puedeEliminar} onDeleted={() => cargar(pagina)} />
             ))}
           </div>
 
@@ -114,8 +95,31 @@ export default function AlertasList() {
   );
 }
 
+const AlertaCard = function AlertaCard({ item, puedeEliminar, onDeleted }) {
+  return (
+    <div className={`alerta-card border-${item.estado || 'pendiente'}`}>
+      <div className="alerta-card-header">
+        <span className={`badge badge-${item.estado}`}>{item.estado?.replace('_', ' ') || 'pendiente'}</span>
+        <span className="alerta-fecha">{formatFecha(item.fecha)}</span>
+      </div>
+      <div className="alerta-card-body">
+        <span className={`tipo-badge tipo-${item.tipo?.toLowerCase()}`}>{item.tipo}</span>
+        <h3 className="alerta-card-desc">{item.descripcion}</h3>
+        <p className="alerta-card-sector">{item.sector}</p>
+        <p className="alerta-card-autor">Reportado por: {item.autor?.nombre || 'Anonimo'}</p>
+      </div>
+      <div className="alerta-card-footer">
+        <Link to={`/alertas/${item._id}`} className="btn btn-sm btn-primary">Ver mas</Link>
+        {puedeEliminar && (
+          <EliminarBtn id={item._id} onDeleted={onDeleted} />
+        )}
+      </div>
+    </div>
+  );
+};
+
 function EliminarBtn({ id, onDeleted }) {
-  const handleClick = async () => {
+  const handleClick = useCallback(async () => {
     if (!window.confirm('Deseas eliminar esta alerta?')) return;
     try {
       const { eliminarAlerta } = await import('../api');
@@ -124,7 +128,7 @@ function EliminarBtn({ id, onDeleted }) {
     } catch {
       alert('Error al eliminar la alerta');
     }
-  };
+  }, [id, onDeleted]);
 
   return <button className="btn btn-sm btn-danger" onClick={handleClick}>Eliminar</button>;
 }
