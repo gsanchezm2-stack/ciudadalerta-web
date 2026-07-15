@@ -7,13 +7,13 @@ import { getAlertas } from '../api';
 import { formatFecha } from '../utils';
 
 const markerColors = {
-  Seguridad: '#dc2626',
-  Infraestructura: '#d97706',
-  Movilidad: '#2563eb',
-  Ambiental: '#16a34a',
-  Salud: '#9333ea',
-  Educacion: '#3730a3',
-  Otro: '#6b7280'
+  Seguridad: '#DC2626',
+  Infraestructura: '#F5A623',
+  Movilidad: '#4361EE',
+  Ambiental: '#27AE60',
+  Salud: '#9333EA',
+  Educacion: '#3730A3',
+  Otro: '#6B7280'
 };
 
 function createIcon(color) {
@@ -28,6 +28,7 @@ function createIcon(color) {
 export default function MapaAlertas() {
   const [alertas, setAlertas] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [filtroTipo, setFiltroTipo] = useState('');
 
   useEffect(() => {
@@ -35,8 +36,8 @@ export default function MapaAlertas() {
       try {
         const data = await getAlertas({ limit: '100' });
         setAlertas(data.alertas || []);
-      } catch {
-        // silent
+      } catch (err) {
+        setError(err.message || 'Error al cargar mapa');
       } finally {
         setLoading(false);
       }
@@ -61,6 +62,12 @@ export default function MapaAlertas() {
   }, [alertasConCoords]);
 
   if (loading) return <p className="empty">Cargando mapa...</p>;
+  if (error) return (
+    <div className="empty">
+      <p style={{ marginBottom: 12 }}>{error}</p>
+      <button className="btn btn-primary btn-sm" onClick={() => window.location.reload()}>Reintentar</button>
+    </div>
+  );
 
   return (
     <div>
@@ -78,7 +85,7 @@ export default function MapaAlertas() {
       </div>
 
       <div className="map-container">
-        <MapContainer center={centro} zoom={12} style={{ height: '500px', width: '100%', borderRadius: '14px' }}>
+        <MapContainer center={centro} zoom={12} style={{ height: '100%', width: '100%', minHeight: '350px', borderRadius: '14px' }}>
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -86,12 +93,12 @@ export default function MapaAlertas() {
           {alertasConCoords.map(a => (
             <Marker key={a._id} position={[a.lat, a.lng]} icon={createIcon(markerColors[a.tipo] || '#6b7280')}>
               <Popup>
-                <div style={{ minWidth: 180 }}>
-                  <strong>{a.tipo}</strong><br />
-                  <span style={{ fontSize: 12, color: '#666' }}>{formatFecha(a.fecha)}</span>
-                  <p style={{ margin: '6px 0', fontSize: 13 }}>{a.descripcion?.slice(0, 80)}...</p>
-                  <p style={{ fontSize: 12, color: '#888' }}>{a.sector}</p>
-                  <Link to={`/alertas/${a._id}`} style={{ fontSize: 12, color: '#065A82', fontWeight: 600 }}>
+                <div style={{ minWidth: 160, maxWidth: 220 }}>
+                  <strong>{a.titulo || a.tipo}</strong><br />
+                  <span style={{ fontSize: 11, color: '#666' }}>{formatFecha(a.fecha)}</span>
+                  <p style={{ margin: '6px 0', fontSize: 12, lineHeight: 1.4 }}>{(a.descripcion || '').slice(0, 80)}{a.descripcion?.length > 80 ? '...' : ''}</p>
+                  <p style={{ fontSize: 11, color: '#888' }}>{a.sector}</p>
+                  <Link to={`/alertas/${a._id}`} style={{ fontSize: 12, color: '#4361EE', fontWeight: 600, display: 'inline-block', marginTop: 4 }}>
                     Ver detalle &rarr;
                   </Link>
                 </div>

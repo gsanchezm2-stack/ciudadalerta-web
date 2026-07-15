@@ -8,14 +8,15 @@ import { tienePermiso } from '../permisos';
 
 ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
-const COLORS = ['#f59e0b', '#3b82f6', '#16a34a'];
-const TIPO_COLORS = ['#dc2626', '#d97706', '#2563eb', '#16a34a', '#9333ea', '#3730a3', '#6b7280'];
+const COLORS = ['#F5A623', '#4361EE', '#27AE60'];
+const TIPO_COLORS = ['#DC2626', '#F5A623', '#4361EE', '#27AE60', '#9333EA', '#3730A3', '#6B7280'];
 
 export default function Dashboard() {
   const { user } = useAuth();
   const [stats, setStats] = useState(null);
   const [recientes, setRecientes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     async function load() {
@@ -23,8 +24,8 @@ export default function Dashboard() {
         const [s, alertasData] = await Promise.all([getStats(), getAlertas({ limit: '5' })]);
         setStats(s);
         setRecientes(alertasData.alertas || []);
-      } catch {
-        // silent
+      } catch (err) {
+        setError(err.message || 'Error al cargar datos');
       } finally {
         setLoading(false);
       }
@@ -76,12 +77,12 @@ export default function Dashboard() {
     datasets: [{
       label: 'Alertas',
       data: stats.porMes.map(m => m.count),
-      borderColor: '#065A82',
-      backgroundColor: 'rgba(6,90,130,0.1)',
+      borderColor: '#4361EE',
+      backgroundColor: 'rgba(67,97,238,0.1)',
       fill: true,
       tension: 0.4,
       pointRadius: 4,
-      pointBackgroundColor: '#065A82'
+      pointBackgroundColor: '#4361EE'
     }]
   } : null;
 
@@ -105,6 +106,11 @@ export default function Dashboard() {
 
       {loading ? (
         <p className="empty">Cargando...</p>
+      ) : error ? (
+        <div className="empty">
+          <p style={{ marginBottom: 12 }}>{error}</p>
+          <button className="btn btn-primary btn-sm" onClick={() => window.location.reload()}>Reintentar</button>
+        </div>
       ) : (
         <>
           <div className="stats-grid">

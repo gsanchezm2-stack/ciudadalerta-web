@@ -9,6 +9,7 @@ export default function AlertasList() {
   const { user } = useAuth();
   const [alertas, setAlertas] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [filtroSector, setFiltroSector] = useState('');
   const [filtroTipo, setFiltroTipo] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('');
@@ -20,6 +21,7 @@ export default function AlertasList() {
 
   const cargar = useCallback(async (page = 1) => {
     setLoading(true);
+    setError('');
     try {
       const params = { page, limit: 10 };
       if (filtroSector) params.sector = filtroSector;
@@ -30,8 +32,8 @@ export default function AlertasList() {
       setAlertas(data.alertas);
       setPaginacion(data.paginacion);
       setPagina(page);
-    } catch {
-      // silent
+    } catch (err) {
+      setError(err.message || 'Error al cargar alertas');
     } finally {
       setLoading(false);
     }
@@ -50,7 +52,7 @@ export default function AlertasList() {
       <h2 className="page-title">Alertas</h2>
 
       <div className="filter-bar">
-        <input className="input filter-input" placeholder="Buscar en descripcion..."
+        <input className="input filter-input" placeholder="Buscar en titulo o descripcion..."
           value={busqueda} onChange={(e) => setBusqueda(e.target.value)} onKeyDown={handleKeyDown} />
         <input className="input filter-input" placeholder="Filtrar por sector"
           value={filtroSector} onChange={(e) => setFiltroSector(e.target.value)} onKeyDown={handleKeyDown} />
@@ -70,6 +72,11 @@ export default function AlertasList() {
 
       {loading ? (
         <p className="empty">Cargando alertas...</p>
+      ) : error ? (
+        <div className="empty">
+          <p style={{ marginBottom: 12 }}>{error}</p>
+          <button className="btn btn-primary btn-sm" onClick={() => cargar(pagina)}>Reintentar</button>
+        </div>
       ) : alertas.length === 0 ? (
         <p className="empty">No hay alertas registradas</p>
       ) : (
@@ -104,7 +111,8 @@ const AlertaCard = function AlertaCard({ item, puedeEliminar, onDeleted }) {
       </div>
       <div className="alerta-card-body">
         <span className={`tipo-badge tipo-${item.tipo?.toLowerCase()}`}>{item.tipo}</span>
-        <h3 className="alerta-card-desc">{item.descripcion}</h3>
+        <h3 className="alerta-card-desc">{item.titulo || item.descripcion}</h3>
+        {item.titulo && <p className="alerta-card-desc" style={{ fontSize: '0.85em', opacity: 0.7, marginTop: 4 }}>{item.descripcion}</p>}
         <p className="alerta-card-sector">{item.sector}</p>
         <p className="alerta-card-autor">Reportado por: {item.autor?.nombre || 'Anonimo'}</p>
       </div>

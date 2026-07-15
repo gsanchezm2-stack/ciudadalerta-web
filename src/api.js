@@ -2,6 +2,11 @@ const API = process.env.REACT_APP_API_URL
   ? `${process.env.REACT_APP_API_URL}/api`
   : '/api';
 
+function clearAuth() {
+  localStorage.removeItem('ciudadalerta_user');
+  localStorage.removeItem('ciudadalerta_token');
+}
+
 async function request(endpoint, options = {}) {
   const token = localStorage.getItem('ciudadalerta_token');
   const headers = { ...options.headers };
@@ -11,6 +16,12 @@ async function request(endpoint, options = {}) {
   }
 
   const res = await fetch(`${API}${endpoint}`, { ...options, headers });
+
+  if (res.status === 401) {
+    clearAuth();
+    window.location.href = '/login';
+    throw new Error('Sesion expirada. Inicia sesion de nuevo.');
+  }
 
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
@@ -72,6 +83,7 @@ export function getAlerta(id) {
 export function crearAlerta(data) {
   if (data.adjuntos && data.adjuntos.length > 0) {
     const formData = new FormData();
+    formData.append('titulo', data.titulo);
     formData.append('tipo', data.tipo);
     formData.append('descripcion', data.descripcion);
     formData.append('sector', data.sector);

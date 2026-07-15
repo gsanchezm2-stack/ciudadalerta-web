@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 
 const AuthContext = createContext(null);
 
@@ -9,15 +9,41 @@ export function useAuth() {
 }
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    try {
-      const stored = localStorage.getItem('ciudadalerta_user');
-      return stored ? JSON.parse(stored) : null;
-    } catch {
-      return null;
+  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const storedToken = localStorage.getItem('ciudadalerta_token');
+    const storedUser = localStorage.getItem('ciudadalerta_user');
+
+    if (!storedToken || !storedUser) {
+      setReady(true);
+      return;
     }
-  });
-  const [token, setToken] = useState(() => localStorage.getItem('ciudadalerta_token'));
+
+    const API = process.env.REACT_APP_API_URL
+      ? `${process.env.REACT_APP_API_URL}/api`
+      : '/api';
+
+    fetch(`${API}/auth/me`, {
+      headers: { Authorization: `Bearer ${storedToken}` },
+    })
+      .then(res => {
+        if (res.ok) {
+          setToken(storedToken);
+          setUser(JSON.parse(storedUser));
+        } else {
+          localStorage.removeItem('ciudadalerta_user');
+          localStorage.removeItem('ciudadalerta_token');
+        }
+      })
+      .catch(() => {
+        setToken(storedToken);
+        setUser(JSON.parse(storedUser));
+      })
+      .finally(() => setReady(true));
+  }, []);
 
   const login = useCallback((userData, tokenStr) => {
     setUser(userData);
@@ -32,6 +58,14 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('ciudadalerta_user');
     localStorage.removeItem('ciudadalerta_token');
   }, []);
+
+  if (!ready) {
+    return (
+      <AuthContext.Provider value={{ user: null, token: null, login: () => {}, logout: () => {}, isAuthenticated: false }}>
+        {children}
+      </AuthContext.Provider>
+    );
+  }
 
   return (
     <AuthContext.Provider value={{ user, token, login, logout, isAuthenticated: !!user }}>

@@ -96,7 +96,8 @@ export default function AlertaDetail() {
           <span className={`badge badge-${alerta.estado}`}>{alerta.estado?.replace('_', ' ') || 'pendiente'}</span>
           <span className={`tipo-badge tipo-${alerta.tipo?.toLowerCase()}`}>{alerta.tipo}</span>
         </div>
-        <h2 className="detail-title">{alerta.descripcion}</h2>
+        <h2 className="detail-title">{alerta.titulo || alerta.descripcion}</h2>
+        {alerta.titulo && <p style={{ color: 'var(--text-secondary)', marginBottom: 16 }}>{alerta.descripcion}</p>}
         <div className="detail-meta">
           <div className="detail-meta-item">
             <span className="detail-label">Sector</span>

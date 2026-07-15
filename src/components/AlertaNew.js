@@ -7,6 +7,7 @@ export default function AlertaNew() {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
   const [tipo, setTipo] = useState('');
+  const [titulo, setTitulo] = useState('');
   const [sector, setSector] = useState('');
   const [descripcion, setDescripcion] = useState('');
   const [archivos, setArchivos] = useState([]);
@@ -34,8 +35,12 @@ export default function AlertaNew() {
     e.preventDefault();
     setError('');
 
-    if (!tipo || !descripcion.trim() || !sector.trim()) {
+    if (!tipo || !titulo.trim() || !descripcion.trim() || !sector.trim()) {
       setError('Todos los campos son obligatorios');
+      return;
+    }
+    if (titulo.trim().length < 5) {
+      setError('El titulo debe tener al menos 5 caracteres');
       return;
     }
     if (descripcion.trim().length < 10) {
@@ -45,7 +50,7 @@ export default function AlertaNew() {
 
     setLoading(true);
     try {
-      await crearAlerta({ tipo, descripcion, sector, adjuntos: archivos });
+      await crearAlerta({ titulo, tipo, descripcion, sector, adjuntos: archivos });
       setExito(true);
       setTimeout(() => navigate('/alertas', { replace: true }), 2000);
     } catch (err) {
@@ -53,7 +58,7 @@ export default function AlertaNew() {
     } finally {
       setLoading(false);
     }
-  }, [tipo, descripcion, sector, archivos, navigate]);
+  }, [tipo, titulo, descripcion, sector, archivos, navigate]);
 
   if (exito) {
     return (
@@ -76,6 +81,13 @@ export default function AlertaNew() {
       {error && <p className="form-error">{error}</p>}
 
       <form className="form-card" onSubmit={handleSubmit}>
+        <div className="form-group">
+          <label className="form-label">Titulo</label>
+          <input className="input" placeholder="Ej: Bache en avenida principal"
+            value={titulo} onChange={(e) => setTitulo(e.target.value)} maxLength={100} required />
+          <span className="form-hint">{titulo.length}/100 caracteres</span>
+        </div>
+
         <div className="form-group">
           <label className="form-label">Tipo de alerta</label>
           <select className="input" value={tipo} onChange={(e) => setTipo(e.target.value)} required>

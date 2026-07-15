@@ -9,14 +9,16 @@ export default function AdminPanel() {
   const { user } = useAuth();
   const [usuarios, setUsuarios] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const cargar = async () => {
     setLoading(true);
+    setError('');
     try {
       const data = await getUsuarios();
       setUsuarios(data);
-    } catch {
-      // silent
+    } catch (err) {
+      setError(err.message || 'No se pudo cargar usuarios');
     } finally {
       setLoading(false);
     }
@@ -44,6 +46,11 @@ export default function AdminPanel() {
 
       {loading ? (
         <p className="empty">Cargando usuarios...</p>
+      ) : error ? (
+        <div className="empty">
+          <p style={{ marginBottom: 12 }}>{error}</p>
+          <button className="btn btn-primary btn-sm" onClick={cargar}>Reintentar</button>
+        </div>
       ) : (
         <div className="admin-table-wrap">
           <table className="admin-table">
